@@ -21,7 +21,8 @@ async function main()
 {
     const IMAGE_WIDTH = program.width;
     const IMAGE_HEIGHT = program.height;
-    const OUTPUT_FILENAME = `output/checkers_${BOX_SIZE}px_${IMAGE_WIDTH}x${IMAGE_HEIGHT}.png`;
+    const SHAPE = [ 'checkers', 'stripes', 'diamonds', 'circle' ].includes( program.shape ) ? program.shape : 'checkers';
+    const OUTPUT_FILENAME = `output/${SHAPE}_${BOX_SIZE}px_${IMAGE_WIDTH}x${IMAGE_HEIGHT}.png`;
     try
     {        
         const newImage = await new jimp( IMAGE_WIDTH, IMAGE_HEIGHT, BASE_COLOR );
@@ -31,7 +32,10 @@ async function main()
             for ( let h = 0; h < ( IMAGE_HEIGHT / BOX_SIZE ); h++ )
             {
                 let CURRENT_COLOR = BACKGROUND_COLOR;
-                if ( ( w + h ) % 2 ) CURRENT_COLOR = FOREGROUND_COLOR;
+                if ( SHAPE === 'checkers' && ( w + h ) % 2 ) CURRENT_COLOR = FOREGROUND_COLOR;
+                if ( SHAPE === 'stripes' && w % 2 ) CURRENT_COLOR = FOREGROUND_COLOR;
+                if ( SHAPE === 'diamonds' && ( Math.abs( w - ( IMAGE_WIDTH / 2 ) ) + Math.abs( h - ( IMAGE_HEIGHT / 2 ) ) ) % 4 < 2 ) CURRENT_COLOR = FOREGROUND_COLOR;
+                if ( SHAPE === 'circle' && ( ( w - ( IMAGE_WIDTH / 2 ) ) ** 2 ) + ( ( h - ( IMAGE_HEIGHT / 2 ) ) ** 2 ) < ( Math.min( IMAGE_WIDTH, IMAGE_HEIGHT ) / 3 ) ** 2 ) CURRENT_COLOR = FOREGROUND_COLOR;
 
                 for ( let i = 0; i < BOX_SIZE; i++ )
                 {
@@ -55,6 +59,7 @@ program
   .version('0.1.0')
   .option('-w <n>', 'Output width', parseInt )
   .option('-h <n>', 'Output height', parseInt )
+  .option('-s, --shape <shape>', 'Shape pattern (checkers, stripes, diamonds, circle)', 'checkers')
   .parse(process.argv);
 
 main();
