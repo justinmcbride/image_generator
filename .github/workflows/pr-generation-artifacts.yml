@@ -22,40 +22,19 @@ jobs:
           node index.js -w 256 -h 256 -s stripes
           node index.js -w 256 -h 256 -s diamonds
           node index.js -w 256 -h 256 -s circle
-      - id: upload-checkers
+      - run: zip -j output/generated-images-256x256.zip output/*_1px_256x256.png
+      - id: upload-images
         uses: actions/upload-artifact@v4
         with:
-          name: checkers-generation
-          path: output/checkers_1px_256x256.png
-          compression-level: 0
-      - id: upload-stripes
-        uses: actions/upload-artifact@v4
-        with:
-          name: stripes-generation
-          path: output/stripes_1px_256x256.png
-          compression-level: 0
-      - id: upload-diamonds
-        uses: actions/upload-artifact@v4
-        with:
-          name: diamonds-generation
-          path: output/diamonds_1px_256x256.png
-          compression-level: 0
-      - id: upload-circle
-        uses: actions/upload-artifact@v4
-        with:
-          name: circle-generation
-          path: output/circle_1px_256x256.png
-          compression-level: 0
+          name: generated-images-256x256
+          path: output/generated-images-256x256.zip
       - uses: actions/github-script@v7
         with:
           script: |
             const marker = '<!-- pr-generation-artifacts -->';
             const body = `${marker}
-            🖼️ Generated image artifacts are ready:
-            - [checkers_1px_256x256.png](${{ steps.upload-checkers.outputs.artifact-url }})
-            - [stripes_1px_256x256.png](${{ steps.upload-stripes.outputs.artifact-url }})
-            - [diamonds_1px_256x256.png](${{ steps.upload-diamonds.outputs.artifact-url }})
-            - [circle_1px_256x256.png](${{ steps.upload-circle.outputs.artifact-url }})`;
+            🖼️ Generated image bundle is ready:
+            - [generated-images-256x256.zip](${{ steps.upload-images.outputs.artifact-url }})`;
 
             const { owner, repo } = context.repo;
             const issue_number = context.payload.pull_request.number;
