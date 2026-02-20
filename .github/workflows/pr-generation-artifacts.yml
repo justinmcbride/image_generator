@@ -22,7 +22,16 @@ jobs:
           node index.js -w 256 -h 256 -s stripes
           node index.js -w 256 -h 256 -s diamonds
           node index.js -w 256 -h 256 -s circle
-      - run: zip -j output/generated-images-256x256.zip output/*_1px_256x256.png
+      - run: |
+          set -euo pipefail
+          shopt -s nullglob
+          files=(output/*_1px_256x256.png)
+          if [ ${#files[@]} -eq 0 ]; then
+            echo "No generated PNG files were found."
+            exit 1
+          fi
+          ls -1 "${files[@]}"
+          zip -j output/generated-images-256x256.zip "${files[@]}"
       - id: upload-images
         uses: actions/upload-artifact@v4
         with:
