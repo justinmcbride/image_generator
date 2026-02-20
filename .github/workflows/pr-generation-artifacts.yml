@@ -3,6 +3,9 @@ name: PR Generation Artifacts
 on:
   pull_request:
 
+permissions:
+  contents: read
+
 jobs:
   generate:
     runs-on: ubuntu-latest
