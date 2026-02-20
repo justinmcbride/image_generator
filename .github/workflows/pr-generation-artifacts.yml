@@ -1,0 +1,23 @@
+name: PR Generation Artifacts
+
+on:
+  pull_request:
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        shape: [checkers, stripes, diamonds, circle]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: node index.js -w 256 -h 256 -s ${{ matrix.shape }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.shape }}-generation
+          path: output/${{ matrix.shape }}_1px_256x256.png
