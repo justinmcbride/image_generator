@@ -1,0 +1,70 @@
+name: PR Generation Artifacts
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: |
+          node index.js -w 256 -h 256 -s checkers
+          node index.js -w 256 -h 256 -s stripes
+          node index.js -w 256 -h 256 -s diamonds
+          node index.js -w 256 -h 256 -s circle
+      - run: |
+          set -euo pipefail
+          shopt -s nullglob
+          files=(output/*_1px_256x256.png)
+          if [ ${#files[@]} -eq 0 ]; then
+            echo "No generated PNG files were found."
+            exit 1
+          fi
+          ls -1 "${files[@]}"
+          zip -j output/generated-images-256x256.zip "${files[@]}"
+      - id: upload-images
+        uses: actions/upload-artifact@v4
+        with:
+          name: generated-images-256x256
+          path: output/generated-images-256x256.zip
+      - uses: actions/github-script@v7
+        with:
+          script: |
+            const marker = '<!-- pr-generation-artifacts -->';
+            const body = `${marker}
+            🖼️ Generated image bundle is ready:
+            - [generated-images-256x256.zip](${{ steps.upload-images.outputs.artifact-url }})`;
+
+            const { owner, repo } = context.repo;
+            const issue_number = context.payload.pull_request.number;
+            const { data: comments } = await github.rest.issues.listComments({
+              owner,
+              repo,
+              issue_number
+            });
+            const existing = comments.find((comment) => comment.body && comment.body.includes(marker));
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner,
+                repo,
+                comment_id: existing.id,
+                body
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner,
+                repo,
+                issue_number,
+                body
+              });
+            }

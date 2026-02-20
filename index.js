@@ -28,7 +28,7 @@ async function main()
     const OUTPUT_FILENAME = `output/${SHAPE}_${BOX_SIZE}px_${IMAGE_WIDTH}x${IMAGE_HEIGHT}.png`;
     try
     {        
-        const newImage = await new jimp( IMAGE_WIDTH, IMAGE_HEIGHT, BASE_COLOR );
+        const newImage = await jimp.create( IMAGE_WIDTH, IMAGE_HEIGHT, BASE_COLOR );
 
         for ( let w = 0; w < GRID_WIDTH; w++ )
         {
@@ -47,7 +47,7 @@ async function main()
                 
             }
         }
-        newImage.write( OUTPUT_FILENAME );
+        await new Promise( ( resolve, reject ) => newImage.write( OUTPUT_FILENAME, ( err ) => err ? reject( err ) : resolve() ) );
     }
     catch (err)
     {
@@ -57,8 +57,8 @@ async function main()
 
 program
   .version('0.1.0')
-  .option('-w <n>', 'Output width', parseInt )
-  .option('-h <n>', 'Output height', parseInt )
+  .option('-w, --width <n>', 'Output width', parseInt )
+  .option('-h, --height <n>', 'Output height', parseInt )
   .option('-s, --shape <shape>', `Shape pattern (${SHAPES.join(', ')})`, 'checkers')
   .parse(process.argv);
 
