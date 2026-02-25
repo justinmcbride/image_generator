@@ -29,3 +29,18 @@ Available shapes:
 Example output file:
 
 `output/checkers_1px_256x256.png`
+
+## Suggested improvements and feature tasks
+
+- [ ] Add CLI options for custom colors (background, foreground, base) using hex values.
+- [ ] Add CLI option for configurable box size (currently fixed at 1px).
+- [ ] Add support for additional pattern types (e.g. noise, waves, gradients, triangles).
+- [ ] Add deterministic randomization with a `--seed` option for reproducible generated images.
+- [ ] Add support for batch generation (multiple sizes/shapes in one command).
+- [ ] Add output format options (JPEG/WebP) and quality/compression controls.
+- [ ] Add input validation for width/height (required, positive integers, safe upper bounds).
+- [ ] Add an option to control output directory and custom output filenames.
+- [ ] Add automated tests for CLI argument parsing and output file naming behavior.
+- [ ] Add snapshot/image-diff tests to validate generated pattern output over time.
+- [ ] Add a `--help` examples section showing common generation workflows.
+- [ ] Add CI checks for `npm test` to ensure test coverage gates future changes.
