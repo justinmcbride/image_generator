@@ -5,6 +5,7 @@ This project is a small Node.js CLI script that generates patterned PNG images.
 It uses:
 - [`commander`](https://www.npmjs.com/package/commander) to read CLI options
 - [`jimp`](https://www.npmjs.com/package/jimp) to create and write image files
+- [`@sentry/node`](https://www.npmjs.com/package/@sentry/node) to capture and report errors
 
 ## What it does
 
@@ -29,3 +30,11 @@ Available shapes:
 Example output file:
 
 `output/checkers_1px_256x256.png`
+
+## Error Reporting
+
+This project uses [Sentry](https://sentry.io) for error reporting. Set the `SENTRY_DSN` environment variable to your Sentry DSN to enable it:
+
+```bash
+SENTRY_DSN=https://<key>@<org>.ingest.sentry.io/<project> node index.js -w 256 -h 256
+```

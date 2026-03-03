@@ -1,6 +1,16 @@
+const Sentry = require('@sentry/node');
 const program = require('commander');
 const jimp = require('jimp');
 const { SHAPES, getShape, isForegroundPixel } = require('./shapeGenerator');
+
+Sentry.init({
+    dsn: process.env.SENTRY_DSN,
+});
+
+if ( !process.env.SENTRY_DSN )
+{
+    console.warn( 'Warning: SENTRY_DSN is not set. Error reporting to Sentry is disabled.' );
+}
 
 const COLOR_BLACK = jimp.rgbaToInt( 0, 0, 0, 255 );
 const COLOR_WHITE = jimp.rgbaToInt( 255, 255, 255, 255 );
@@ -51,6 +61,7 @@ async function main()
     }
     catch (err)
     {
+        Sentry.captureException( err );
         console.error( err );
     }
 }
