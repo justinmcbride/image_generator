@@ -22,10 +22,16 @@ jobs:
           node index.js -w 256 -h 256 -s stripes
           node index.js -w 256 -h 256 -s diamonds
           node index.js -w 256 -h 256 -s circle
+          node index.js -w 256 -h 256 -s checkers --mask circle --mask-color black
+          node index.js -w 256 -h 256 -s checkers --mask circle --mask-color white
+          node index.js -w 256 -h 256 -s checkers --mask circle --mask-color transparent
+          node index.js -w 256 -h 256 -s checkers --mask diamond --mask-color black
+          node index.js -w 256 -h 256 -s checkers --mask diamond --mask-color white
+          node index.js -w 256 -h 256 -s checkers --mask diamond --mask-color transparent
       - run: |
           set -euo pipefail
           shopt -s nullglob
-          files=(output/*_1px_256x256.png)
+          files=(output/*_1px_256x256*.png)
           if [ ${#files[@]} -eq 0 ]; then
             echo "No generated PNG files were found."
             exit 1
