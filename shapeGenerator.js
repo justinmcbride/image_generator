@@ -2,7 +2,12 @@ const SHAPES = [ 'checkers', 'stripes', 'diamonds', 'circle' ];
 
 function getShape( inputShape )
 {
-    return SHAPES.includes( inputShape ) ? inputShape : 'checkers';
+    if ( SHAPES.includes( inputShape ) ) return inputShape;
+    if ( inputShape !== undefined && inputShape !== 'checkers' )
+    {
+        console.warn( `Warning: unrecognized shape "${inputShape}", defaulting to "checkers". Available shapes: ${SHAPES.join( ', ' )}` );
+    }
+    return 'checkers';
 }
 
 function isForegroundPixel( w, h, gridWidth, gridHeight, shape )

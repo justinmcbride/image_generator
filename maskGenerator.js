@@ -3,12 +3,22 @@ const MASK_COLORS = [ 'black', 'white', 'transparent' ];
 
 function getMask( inputMask )
 {
-    return MASKS.includes( inputMask ) ? inputMask : null;
+    if ( MASKS.includes( inputMask ) ) return inputMask;
+    if ( inputMask !== undefined )
+    {
+        console.warn( `Warning: unrecognized mask "${inputMask}", ignoring. Available masks: ${MASKS.join( ', ' )}` );
+    }
+    return null;
 }
 
 function getMaskColor( colorName )
 {
-    return MASK_COLORS.includes( colorName ) ? colorName : 'black';
+    if ( MASK_COLORS.includes( colorName ) ) return colorName;
+    if ( colorName !== undefined && colorName !== 'black' )
+    {
+        console.warn( `Warning: unrecognized mask color "${colorName}", defaulting to "black". Available colors: ${MASK_COLORS.join( ', ' )}` );
+    }
+    return 'black';
 }
 
 function isInsideMask( x, y, imageWidth, imageHeight, mask )
