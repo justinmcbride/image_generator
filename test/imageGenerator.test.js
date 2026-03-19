@@ -1,10 +1,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('fs');
-const path = require('path');
 const { validateOptions, generateImage } = require('../imageGenerator');
-
-const TEST_OUTPUT_DIR = path.join( __dirname, '..', 'output' );
 
 test( 'validateOptions rejects missing width', () =>
 {

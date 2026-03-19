@@ -56,14 +56,14 @@ async function generateImage( options )
 
     const image = await jimp.create( width, height, BACKGROUND_COLOR );
 
-    for ( let w = 0; w < width; w++ )
+    for ( let x = 0; x < width; x++ )
     {
-        for ( let h = 0; h < height; h++ )
+        for ( let y = 0; y < height; y++ )
         {
-            const color = isForegroundPixel( w, h, width, height, shape )
+            const color = isForegroundPixel( x, y, width, height, shape )
                 ? FOREGROUND_COLOR
                 : BACKGROUND_COLOR;
-            image.setPixelColor( color, w, h );
+            image.setPixelColor( color, x, y );
         }
     }
 
