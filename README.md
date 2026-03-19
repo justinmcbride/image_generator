@@ -24,11 +24,15 @@ Run the script with width and height values (and optional shape/mask options):
 node index.js -w 256 -h 256 -s checkers
 ```
 
+Both `-w` (width) and `-h` (height) are required and must be positive integers. The script will exit with a non-zero status and print an error message if they are missing or invalid.
+
 Available shapes:
 - `checkers` (default)
 - `stripes`
 - `diamonds`
 - `circle`
+
+If an unrecognized shape is provided, the script will print a warning and default to `checkers`.
 
 Example output file:
 
