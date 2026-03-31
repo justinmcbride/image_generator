@@ -105,3 +105,46 @@ test( 'generateImage masked output filename format is correct', async () =>
     assert.equal( outputFile, 'output/diamonds_1px_32x64_diamond_transparent.png' );
     fs.unlinkSync( outputFile );
 } );
+
+test( 'validateOptions requires --emoji when shape is emoji', () =>
+{
+    const errors = validateOptions( { width: 64, height: 64, shape: 'emoji' } );
+    assert.equal( errors.length, 1 );
+    assert.match( errors[0], /--emoji/ );
+} );
+
+test( 'validateOptions requires --emoji when mask is emoji', () =>
+{
+    const errors = validateOptions( { width: 64, height: 64, mask: 'emoji' } );
+    assert.equal( errors.length, 1 );
+    assert.match( errors[0], /--emoji/ );
+} );
+
+test( 'validateOptions accepts emoji with --emoji provided', () =>
+{
+    const errors = validateOptions( { width: 64, height: 64, shape: 'emoji', emoji: '🐐' } );
+    assert.equal( errors.length, 0 );
+} );
+
+test( 'generateImage creates an emoji shape image', async () =>
+{
+    const outputFile = await generateImage( { width: 64, height: 64, shape: 'emoji', emoji: '⭐' } );
+    assert.ok( fs.existsSync( outputFile ), `Expected emoji file: ${outputFile}` );
+    assert.ok( outputFile.includes( 'emoji_⭐' ), 'Filename should contain emoji' );
+    fs.unlinkSync( outputFile );
+} );
+
+test( 'generateImage creates an emoji mask image', async () =>
+{
+    const outputFile = await generateImage( {
+        width: 64,
+        height: 64,
+        shape: 'checkers',
+        mask: 'emoji',
+        emoji: '🐐',
+        maskColor: 'white'
+    } );
+    assert.ok( fs.existsSync( outputFile ), `Expected emoji mask file: ${outputFile}` );
+    assert.ok( outputFile.includes( 'emoji_🐐' ), 'Filename should contain emoji mask info' );
+    fs.unlinkSync( outputFile );
+} );

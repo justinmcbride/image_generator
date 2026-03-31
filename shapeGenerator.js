@@ -1,19 +1,23 @@
-const SHAPES = [ 'checkers', 'stripes', 'diamonds', 'circle' ];
+const SHAPES = [ 'checkers', 'stripes', 'diamonds', 'circle', 'emoji' ];
 
 function getShape( inputShape )
 {
     if ( SHAPES.includes( inputShape ) ) return inputShape;
     if ( inputShape !== undefined && inputShape !== 'checkers' )
     {
-        console.warn( `Warning: unrecognized shape "${inputShape}", defaulting to "checkers". Available shapes: ${SHAPES.join( ', ' )}` );
+        console.warn( `⚠️  Warning: unrecognized shape "${inputShape}", defaulting to "checkers". Available shapes: ${SHAPES.join( ', ' )}` );
     }
     return 'checkers';
 }
 
-function isForegroundPixel( w, h, gridWidth, gridHeight, shape )
+function isForegroundPixel( w, h, gridWidth, gridHeight, shape, emojiGrid )
 {
     const centerX = gridWidth / 2;
     const centerY = gridHeight / 2;
+    if ( shape === 'emoji' )
+    {
+        return emojiGrid && emojiGrid[ h ] && emojiGrid[ h ][ w ] === true;
+    }
     if ( shape === 'checkers' )
     {
         return ( w + h ) % 2 === 1;

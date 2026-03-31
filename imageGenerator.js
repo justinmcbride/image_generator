@@ -3,6 +3,7 @@ const path = require('path');
 const jimp = require('jimp');
 const { getShape, isForegroundPixel } = require('./shapeGenerator');
 const { getMask, getMaskColor, isInsideMask } = require('./maskGenerator');
+const { renderEmojiGrid } = require('./emojiRenderer');
 
 const BACKGROUND_COLOR = jimp.rgbaToInt( 0, 0, 0, 255 );
 const FOREGROUND_COLOR = jimp.rgbaToInt( 0, 255, 0, 255 );
@@ -34,6 +35,11 @@ function validateOptions( options )
         errors.push( `Height must be a positive integer, got: ${options.height}` );
     }
 
+    if ( ( options.shape === 'emoji' || options.mask === 'emoji' ) && !options.emoji )
+    {
+        errors.push( 'The --emoji option is required when using emoji shape or mask.' );
+    }
+
     return errors;
 }
 
@@ -45,8 +51,18 @@ async function generateImage( options )
     const mask = getMask( options.mask );
     const maskColorName = getMaskColor( options.maskColor );
     const maskColorValue = MASK_COLOR_VALUES[ maskColorName ];
-    const maskSuffix = mask ? `_${mask}_${maskColorName}` : '';
-    const outputFilename = `output/${shape}_1px_${width}x${height}${maskSuffix}.png`;
+    const emoji = options.emoji;
+
+    let emojiGrid = null;
+    if ( shape === 'emoji' || mask === 'emoji' )
+    {
+        emojiGrid = renderEmojiGrid( emoji, width, height );
+    }
+
+    const shapeName = shape === 'emoji' ? `emoji_${emoji}` : shape;
+    const maskName = mask === 'emoji' ? `emoji_${emoji}` : mask;
+    const maskSuffix = mask ? `_${maskName}_${maskColorName}` : '';
+    const outputFilename = `output/${shapeName}_1px_${width}x${height}${maskSuffix}.png`;
 
     const outputDir = path.dirname( outputFilename );
     if ( !fs.existsSync( outputDir ) )
@@ -60,7 +76,7 @@ async function generateImage( options )
     {
         for ( let y = 0; y < height; y++ )
         {
-            const color = isForegroundPixel( x, y, width, height, shape )
+            const color = isForegroundPixel( x, y, width, height, shape, emojiGrid )
                 ? FOREGROUND_COLOR
                 : BACKGROUND_COLOR;
             image.setPixelColor( color, x, y );
@@ -73,7 +89,7 @@ async function generateImage( options )
         {
             for ( let y = 0; y < height; y++ )
             {
-                if ( !isInsideMask( x, y, width, height, mask ) )
+                if ( !isInsideMask( x, y, width, height, mask, emojiGrid ) )
                 {
                     image.setPixelColor( maskColorValue, x, y );
                 }

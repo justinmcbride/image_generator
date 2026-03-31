@@ -1,4 +1,4 @@
-const MASKS = [ 'circle', 'diamond' ];
+const MASKS = [ 'circle', 'diamond', 'emoji' ];
 const MASK_COLORS = [ 'black', 'white', 'transparent' ];
 
 function getMask( inputMask )
@@ -6,7 +6,7 @@ function getMask( inputMask )
     if ( MASKS.includes( inputMask ) ) return inputMask;
     if ( inputMask !== undefined )
     {
-        console.warn( `Warning: unrecognized mask "${inputMask}", ignoring. Available masks: ${MASKS.join( ', ' )}` );
+        console.warn( `⚠️  Warning: unrecognized mask "${inputMask}", ignoring. Available masks: ${MASKS.join( ', ' )}` );
     }
     return null;
 }
@@ -16,15 +16,19 @@ function getMaskColor( colorName )
     if ( MASK_COLORS.includes( colorName ) ) return colorName;
     if ( colorName !== undefined && colorName !== 'black' )
     {
-        console.warn( `Warning: unrecognized mask color "${colorName}", defaulting to "black". Available colors: ${MASK_COLORS.join( ', ' )}` );
+        console.warn( `⚠️  Warning: unrecognized mask color "${colorName}", defaulting to "black". Available colors: ${MASK_COLORS.join( ', ' )}` );
     }
     return 'black';
 }
 
-function isInsideMask( x, y, imageWidth, imageHeight, mask )
+function isInsideMask( x, y, imageWidth, imageHeight, mask, emojiGrid )
 {
     const centerX = imageWidth / 2;
     const centerY = imageHeight / 2;
+    if ( mask === 'emoji' )
+    {
+        return emojiGrid && emojiGrid[ y ] && emojiGrid[ y ][ x ] === true;
+    }
     if ( mask === 'circle' )
     {
         const radius = Math.min( imageWidth, imageHeight ) / 2;

@@ -10,36 +10,39 @@ async function main()
         height: program.height,
         shape: program.shape,
         mask: program.mask,
-        maskColor: program.maskColor
+        maskColor: program.maskColor,
+        emoji: program.emoji
     };
 
     const errors = validateOptions( options );
     if ( errors.length > 0 )
     {
-        errors.forEach( ( err ) => console.error( `Error: ${err}` ) );
+        errors.forEach( ( err ) => console.error( `❌ Error: ${err}` ) );
         process.exitCode = 1;
         return;
     }
 
     try
     {
+        console.log( '🎨 Generating image...' );
         const outputFile = await generateImage( options );
-        console.log( `Generated: ${outputFile}` );
+        console.log( `✅ Generated: ${outputFile}` );
     }
     catch ( err )
     {
-        console.error( err );
+        console.error( `❌ ${err}` );
         process.exitCode = 1;
     }
 }
 
 program
-  .version('0.1.0')
+  .version('0.2.0')
   .option('-w, --width <n>', 'Output width', parseInt )
   .option('-h, --height <n>', 'Output height', parseInt )
   .option('-s, --shape <shape>', `Shape pattern (${SHAPES.join(', ')})`, 'checkers')
   .option('-m, --mask <mask>', `Mask shape (${MASKS.join(', ')})`)
   .option('--mask-color <color>', `Color outside mask (${MASK_COLORS.join(', ')})`, 'black')
+  .option('-e, --emoji <character>', 'Emoji character (required for emoji shape/mask)')
   .parse(process.argv);
 
 main();

@@ -22,6 +22,11 @@ test( 'getShape defaults invalid values to checkers', () =>
     assert.equal( getShape( 'invalid-shape' ), 'checkers' );
 } );
 
+test( 'getShape accepts emoji as a valid shape', () =>
+{
+    assert.equal( getShape( 'emoji' ), 'emoji' );
+} );
+
 test( 'checkers pattern for 4x4 and 5x5', () =>
 {
     assert.deepEqual( renderGrid( 4, 4, 'checkers' ), [
@@ -92,4 +97,16 @@ test( 'circle pattern for 4x4 and 5x5', () =>
         '01111',
         '00110'
     ] );
+} );
+
+test( 'emoji shape uses provided grid', () =>
+{
+    const emojiGrid = [
+        [ false, true, false ],
+        [ true, true, true ],
+        [ false, true, false ]
+    ];
+    assert.equal( isForegroundPixel( 1, 0, 3, 3, 'emoji', emojiGrid ), true );
+    assert.equal( isForegroundPixel( 0, 0, 3, 3, 'emoji', emojiGrid ), false );
+    assert.equal( isForegroundPixel( 1, 1, 3, 3, 'emoji', emojiGrid ), true );
 } );

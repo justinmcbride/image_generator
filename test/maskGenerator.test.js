@@ -21,6 +21,7 @@ test( 'getMask returns valid mask names and null for invalid', () =>
 {
     assert.equal( getMask( 'circle' ), 'circle' );
     assert.equal( getMask( 'diamond' ), 'diamond' );
+    assert.equal( getMask( 'emoji' ), 'emoji' );
     assert.equal( getMask( 'invalid' ), null );
     assert.equal( getMask( undefined ), null );
 } );
@@ -68,4 +69,16 @@ test( 'diamond mask for 4x4 and 5x5', () =>
         '01111',
         '00110'
     ] );
+} );
+
+test( 'emoji mask uses provided grid', () =>
+{
+    const emojiGrid = [
+        [ false, true, false ],
+        [ true, true, true ],
+        [ false, true, false ]
+    ];
+    assert.equal( isInsideMask( 1, 0, 3, 3, 'emoji', emojiGrid ), true );
+    assert.equal( isInsideMask( 0, 0, 3, 3, 'emoji', emojiGrid ), false );
+    assert.equal( isInsideMask( 2, 2, 3, 3, 'emoji', emojiGrid ), false );
 } );
