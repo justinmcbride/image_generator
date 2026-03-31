@@ -18,10 +18,16 @@ function renderEmojiGrid( emoji, width, height )
 
     const fontSize = Math.floor( Math.min( width, height ) * 0.8 );
     ctx.font = `${fontSize}px "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif`;
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'alphabetic';
 
-    ctx.fillText( emoji, width / 2, height / 2 );
+    const metrics = ctx.measureText( emoji );
+    const textWidth = metrics.actualBoundingBoxLeft + metrics.actualBoundingBoxRight;
+    const textHeight = metrics.actualBoundingBoxAscent + metrics.actualBoundingBoxDescent;
+    const x = ( width - textWidth ) / 2 + metrics.actualBoundingBoxLeft;
+    const y = ( height - textHeight ) / 2 + metrics.actualBoundingBoxAscent;
+
+    ctx.fillText( emoji, x, y );
 
     const imageData = ctx.getImageData( 0, 0, width, height );
     const pixels = imageData.data;
