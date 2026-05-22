@@ -2,9 +2,27 @@ const program = require('commander');
 const { SHAPES } = require('./shapeGenerator');
 const { MASKS, MASK_COLORS } = require('./maskGenerator');
 const { validateOptions, generateImage } = require('./imageGenerator');
+const { loadScene, renderSceneToFile } = require('./sceneCompositor');
 
 async function main()
 {
+    if ( program.scene )
+    {
+        try
+        {
+            console.log( `🎬 Loading scene: ${program.scene}` );
+            const scene = loadScene( program.scene );
+            const outputFile = await renderSceneToFile( scene, 'output' );
+            console.log( `✅ Generated: ${outputFile}` );
+        }
+        catch ( err )
+        {
+            console.error( `❌ ${err.message || err}` );
+            process.exitCode = 1;
+        }
+        return;
+    }
+
     const options = {
         width: program.width,
         height: program.height,
@@ -43,6 +61,7 @@ program
   .option('-m, --mask <mask>', `Mask shape (${MASKS.join(', ')})`)
   .option('--mask-color <color>', `Color outside mask (${MASK_COLORS.join(', ')})`, 'black')
   .option('-e, --emoji <character>', 'Emoji character (required for emoji shape/mask)')
+  .option('--scene <file>', 'Render a JSON scene file (multi-layer compositor)')
   .parse(process.argv);
 
 main();
