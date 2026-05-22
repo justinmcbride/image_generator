@@ -11,7 +11,10 @@ async function main()
         shape: program.shape,
         mask: program.mask,
         maskColor: program.maskColor,
-        emoji: program.emoji
+        emoji: program.emoji,
+        fgColor: program.fgColor,
+        bgColor: program.bgColor,
+        scene: program.scene
     };
 
     const errors = validateOptions( options );
@@ -43,6 +46,9 @@ program
   .option('-m, --mask <mask>', `Mask shape (${MASKS.join(', ')})`)
   .option('--mask-color <color>', `Color outside mask (${MASK_COLORS.join(', ')})`, 'black')
   .option('-e, --emoji <character>', 'Emoji character (required for emoji shape/mask)')
+  .option('--fg-color <color>', 'Foreground color (named or hex, e.g. #ff8800)')
+  .option('--bg-color <color>', 'Background color (named or hex)')
+  .option('--scene <file>', 'Path to a JSON scene file (overrides shape/mask CLI options)')
   .parse(process.argv);
 
 main();

@@ -1,12 +1,13 @@
 const fs = require('fs');
 const path = require('path');
 const jimp = require('jimp');
-const { getShape, isForegroundPixel } = require('./shapeGenerator');
+const { getShape, isForegroundPixel, getPatternPixel } = require('./shapeGenerator');
 const { getMask, getMaskColor, isInsideMask } = require('./maskGenerator');
 const { renderEmojiGrid } = require('./emojiRenderer');
+const { parseColor, colorToInt } = require('./colorUtils');
 
-const BACKGROUND_COLOR = jimp.rgbaToInt( 0, 0, 0, 255 );
-const FOREGROUND_COLOR = jimp.rgbaToInt( 0, 255, 0, 255 );
+const DEFAULT_BACKGROUND = { r: 0, g: 0, b: 0, a: 255 };
+const DEFAULT_FOREGROUND = { r: 0, g: 255, b: 0, a: 255 };
 
 const MASK_COLOR_VALUES = {
     black: jimp.rgbaToInt( 0, 0, 0, 255 ),
@@ -40,6 +41,15 @@ function validateOptions( options )
         errors.push( 'The --emoji option is required when using emoji shape or mask.' );
     }
 
+    for ( const key of [ 'fgColor', 'bgColor' ] )
+    {
+        if ( options[ key ] !== undefined && options[ key ] !== null )
+        {
+            try { parseColor( options[ key ] ); }
+            catch ( err ) { errors.push( err.message ); }
+        }
+    }
+
     return errors;
 }
 
@@ -52,6 +62,11 @@ async function generateImage( options )
     const maskColorName = getMaskColor( options.maskColor );
     const maskColorValue = MASK_COLOR_VALUES[ maskColorName ];
     const emoji = options.emoji;
+
+    const fg = options.fgColor ? parseColor( options.fgColor ) : DEFAULT_FOREGROUND;
+    const bg = options.bgColor ? parseColor( options.bgColor ) : DEFAULT_BACKGROUND;
+    const FOREGROUND_COLOR = colorToInt( fg );
+    const BACKGROUND_COLOR = colorToInt( bg );
 
     let emojiGrid = null;
     if ( shape === 'emoji' || mask === 'emoji' )
@@ -76,10 +91,8 @@ async function generateImage( options )
     {
         for ( let y = 0; y < height; y++ )
         {
-            const color = isForegroundPixel( x, y, width, height, shape, emojiGrid )
-                ? FOREGROUND_COLOR
-                : BACKGROUND_COLOR;
-            image.setPixelColor( color, x, y );
+            const pixel = getPatternPixel( x, y, width, height, shape, fg, bg, emojiGrid, options.patternOptions );
+            image.setPixelColor( colorToInt( pixel ), x, y );
         }
     }
 
