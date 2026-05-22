@@ -311,3 +311,153 @@ test( 'compositeScene applies darken and lighten', () =>
         layers: [ base, { ...top, blendMode: 'lighten' } ] } );
     assert.deepEqual( [ lightPx[0], lightPx[1], lightPx[2] ], [ 200, 200, 50 ] );
 } );
+
+// ───── Iteration 3: keyframe animation ─────
+
+const {
+    EASINGS,
+    resolveLayerAtFrame,
+    resolveSceneAtFrame,
+    renderAnimation
+} = require( '../sceneCompositor' );
+
+test( 'EASINGS functions hit expected endpoints', () =>
+{
+    for ( const name of Object.keys( EASINGS ) )
+    {
+        assert.equal( EASINGS[ name ]( 0 ), 0, `${name}(0)` );
+        assert.equal( EASINGS[ name ]( 1 ), 1, `${name}(1)` );
+    }
+    assert.equal( EASINGS.linear( 0.5 ), 0.5 );
+    assert.ok( EASINGS.easeIn( 0.5 ) < 0.5 );
+    assert.ok( EASINGS.easeOut( 0.5 ) > 0.5 );
+} );
+
+test( 'resolveLayerAtFrame interpolates opacity linearly', () =>
+{
+    const layer = {
+        shape: 'circle',
+        keyframes: [
+            { frame: 0,  opacity: 0.0 },
+            { frame: 10, opacity: 1.0 }
+        ]
+    };
+    assert.equal( resolveLayerAtFrame( layer, 0 ).opacity, 0 );
+    assert.equal( resolveLayerAtFrame( layer, 5 ).opacity, 0.5 );
+    assert.equal( resolveLayerAtFrame( layer, 10 ).opacity, 1 );
+    // before first keyframe and after last clamp to nearest
+    assert.equal( resolveLayerAtFrame( layer, 100 ).opacity, 1 );
+} );
+
+test( 'resolveLayerAtFrame interpolates transform with easing', () =>
+{
+    const layer = {
+        shape: 'diamonds',
+        keyframes: [
+            { frame: 0,  transform: { rotate: 0 },   easing: 'easeIn' },
+            { frame: 10, transform: { rotate: 100 } }
+        ]
+    };
+    // At t=0.5, easeIn(0.5)=0.25 → rotate ≈ 25
+    const r5 = resolveLayerAtFrame( layer, 5 );
+    assert.equal( Math.round( r5.transform.rotate ), 25 );
+} );
+
+test( 'resolveLayerAtFrame interpolates colors', () =>
+{
+    const layer = {
+        shape: 'stripes',
+        keyframes: [
+            { frame: 0,  foreground: '#000000' },
+            { frame: 10, foreground: '#ffffff' }
+        ]
+    };
+    const mid = resolveLayerAtFrame( layer, 5 );
+    // 50% between black and white
+    assert.deepEqual( mid.foreground, { r: 128, g: 128, b: 128, a: 255 } );
+} );
+
+test( 'validateScene flags keyframe out of range and bad easing', () =>
+{
+    const errs = validateScene( {
+        width: 4, height: 4,
+        animation: { frames: 5 },
+        layers: [ { shape: 'checkers', keyframes: [
+            { frame: 99, opacity: 1, easing: 'bogus' }
+        ] } ]
+    } );
+    assert.ok( errs.some( ( e ) => /out of range/.test( e ) ) );
+    assert.ok( errs.some( ( e ) => /easing/.test( e ) ) );
+} );
+
+test( 'validateScene flags non-positive frames', () =>
+{
+    const errs = validateScene( {
+        width: 4, height: 4,
+        animation: { frames: 0 },
+        layers: [ { shape: 'checkers' } ]
+    } );
+    assert.ok( errs.some( ( e ) => /frames/.test( e ) ) );
+} );
+
+test( 'resolveSceneAtFrame returns a static (animation-free) snapshot', () =>
+{
+    const scene = {
+        width: 4, height: 4,
+        animation: { frames: 4 },
+        layers: [ { shape: 'circle', keyframes: [
+            { frame: 0, opacity: 0 },
+            { frame: 3, opacity: 1 }
+        ] } ]
+    };
+    const snap = resolveSceneAtFrame( scene, 0 );
+    assert.equal( snap.animation, undefined );
+    assert.equal( snap.layers[ 0 ].opacity, 0 );
+    assert.equal( snap.layers[ 0 ].keyframes, undefined );
+    // and snap can be composited without errors
+    const px = compositeScene( snap );
+    assert.ok( px.length === 4 * 4 * 4 );
+} );
+
+test( 'renderAnimation writes frames and filmstrip', async () =>
+{
+    const tmpDir = fs.mkdtempSync( path.join( os.tmpdir(), 'anim-' ) );
+    const scene = {
+        name: 'spin_test',
+        width: 8, height: 8,
+        animation: { frames: 3 },
+        background: 'black',
+        layers: [ {
+            shape: 'diamonds',
+            foreground: 'cyan',
+            keyframes: [
+                { frame: 0, transform: { rotate: 0 } },
+                { frame: 2, transform: { rotate: 180 } }
+            ]
+        } ]
+    };
+    const result = await renderAnimation( scene, tmpDir );
+    assert.equal( result.frameCount, 3 );
+    assert.equal( result.frameFiles.length, 3 );
+    for ( const f of result.frameFiles )
+    {
+        assert.ok( fs.existsSync( f ), `frame missing: ${f}` );
+        assert.ok( fs.statSync( f ).size > 0 );
+    }
+    assert.ok( fs.existsSync( result.filmstrip ) );
+    assert.ok( fs.statSync( result.filmstrip ).size > 0 );
+} );
+
+test( 'renderAnimation supports scenes without animation block (single frame)', async () =>
+{
+    const tmpDir = fs.mkdtempSync( path.join( os.tmpdir(), 'anim-single-' ) );
+    const scene = {
+        name: 'one',
+        width: 6, height: 6,
+        background: 'black',
+        layers: [ { shape: 'checkers', foreground: 'green' } ]
+    };
+    const result = await renderAnimation( scene, tmpDir );
+    assert.equal( result.frameCount, 1 );
+    assert.ok( fs.existsSync( result.filmstrip ) );
+} );

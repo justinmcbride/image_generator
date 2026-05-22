@@ -1,0 +1,36 @@
+{
+  "name": "example_spin",
+  "width": 64,
+  "height": 64,
+  "background": "black",
+  "animation": { "frames": 16, "fps": 12 },
+  "layers": [
+    {
+      "shape": "checkers",
+      "foreground": "#1a1a3a",
+      "background": "#0a0a1a"
+    },
+    {
+      "shape": "diamonds",
+      "foreground": "cyan",
+      "background": "transparent",
+      "opacity": 0.7,
+      "blendMode": "screen",
+      "keyframes": [
+        { "frame": 0,  "transform": { "rotate": 0,   "scale": 1.0 }, "easing": "easeInOut" },
+        { "frame": 15, "transform": { "rotate": 180, "scale": 1.5 } }
+      ]
+    },
+    {
+      "shape": "circle",
+      "foreground": "magenta",
+      "background": "transparent",
+      "blendMode": "add",
+      "keyframes": [
+        { "frame": 0,  "opacity": 0.2, "easing": "easeOut" },
+        { "frame": 8,  "opacity": 1.0, "easing": "easeIn"  },
+        { "frame": 15, "opacity": 0.2 }
+      ]
+    }
+  ]
+}

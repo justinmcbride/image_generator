@@ -183,13 +183,63 @@ function validateScene( scene )
         try { parseColor( scene.background ); }
         catch ( err ) { errors.push( `Scene background - ${err.message}` ); }
     }
+    if ( scene.animation !== undefined )
+    {
+        if ( typeof scene.animation !== 'object' || scene.animation === null )
+        {
+            errors.push( 'Scene animation must be an object.' );
+        }
+        else
+        {
+            if ( !Number.isInteger( scene.animation.frames ) || scene.animation.frames <= 0 )
+            {
+                errors.push( `Scene animation.frames must be a positive integer, got: ${scene.animation.frames}` );
+            }
+            if ( scene.animation.fps !== undefined &&
+                ( typeof scene.animation.fps !== 'number' || scene.animation.fps <= 0 ) )
+            {
+                errors.push( `Scene animation.fps must be a positive number.` );
+            }
+        }
+    }
     if ( !Array.isArray( scene.layers ) || scene.layers.length === 0 )
     {
         errors.push( 'Scene must have a non-empty "layers" array.' );
     }
     else
     {
-        scene.layers.forEach( ( layer, i ) => errors.push( ...validateLayer( layer, i ) ) );
+        scene.layers.forEach( ( layer, i ) =>
+        {
+            errors.push( ...validateLayer( layer, i ) );
+            if ( layer && Array.isArray( layer.keyframes ) )
+            {
+                const totalFrames = scene.animation && scene.animation.frames;
+                layer.keyframes.forEach( ( kf, j ) =>
+                {
+                    if ( !kf || typeof kf !== 'object' )
+                    {
+                        errors.push( `Layer ${i} keyframe ${j} is not an object.` );
+                        return;
+                    }
+                    if ( !Number.isInteger( kf.frame ) || kf.frame < 0 )
+                    {
+                        errors.push( `Layer ${i} keyframe ${j}: frame must be a non-negative integer.` );
+                    }
+                    else if ( totalFrames && kf.frame >= totalFrames )
+                    {
+                        errors.push( `Layer ${i} keyframe ${j}: frame ${kf.frame} is out of range (0..${totalFrames - 1}).` );
+                    }
+                    if ( kf.easing !== undefined && !EASINGS[ kf.easing ] )
+                    {
+                        errors.push( `Layer ${i} keyframe ${j}: easing "${kf.easing}" is not one of ${Object.keys( EASINGS ).join( ', ' )}.` );
+                    }
+                } );
+            }
+            else if ( layer && layer.keyframes !== undefined && !Array.isArray( layer.keyframes ) )
+            {
+                errors.push( `Layer ${i}: keyframes must be an array.` );
+            }
+        } );
     }
     return errors;
 }
@@ -363,9 +413,188 @@ async function renderSceneToFile( scene, outputDir )
     return outputFile;
 }
 
+const EASINGS = {
+    linear:    ( t ) => t,
+    easeIn:    ( t ) => t * t,
+    easeOut:   ( t ) => 1 - ( 1 - t ) * ( 1 - t ),
+    easeInOut: ( t ) => t < 0.5 ? 2 * t * t : 1 - 2 * ( 1 - t ) * ( 1 - t )
+};
+
+function lerp( a, b, t )
+{
+    return a + ( b - a ) * t;
+}
+
+function lerpColor( a, b, t )
+{
+    return {
+        r: Math.round( lerp( a.r, b.r, t ) ),
+        g: Math.round( lerp( a.g, b.g, t ) ),
+        b: Math.round( lerp( a.b, b.b, t ) ),
+        a: Math.round( lerp( a.a, b.a, t ) )
+    };
+}
+
+const NUMERIC_KEYS = [ 'opacity' ];
+const TRANSFORM_KEYS = [ 'rotate', 'scale', 'scaleX', 'scaleY', 'offsetX', 'offsetY' ];
+const COLOR_KEYS = [ 'foreground', 'background' ];
+
+/**
+ * Resolve the interpolated layer state at a given frame.
+ * For each animatable property, find the surrounding two keyframes
+ * (by frame index) and lerp between them using the easing of the
+ * keyframe being eased FROM. Values not present in any keyframe
+ * fall through to the layer's static value.
+ */
+function resolveLayerAtFrame( layer, frame )
+{
+    const kfs = Array.isArray( layer.keyframes ) ? layer.keyframes.slice().sort( ( a, b ) => a.frame - b.frame ) : [];
+    if ( kfs.length === 0 ) return layer;
+
+    function findPair( has )
+    {
+        let before = null;
+        let after = null;
+        for ( const kf of kfs )
+        {
+            if ( !has( kf ) ) continue;
+            if ( kf.frame <= frame ) before = kf;
+            if ( kf.frame >= frame && after === null ) after = kf;
+        }
+        return { before, after };
+    }
+
+    function interpolateNumber( getter )
+    {
+        const { before, after } = findPair( ( kf ) => getter( kf ) !== undefined );
+        if ( before === null && after === null ) return undefined;
+        if ( before === null ) return getter( after );
+        if ( after === null || before === after ) return getter( before );
+        const span = after.frame - before.frame;
+        const localT = span === 0 ? 1 : ( frame - before.frame ) / span;
+        const eased = ( EASINGS[ before.easing ] || EASINGS.linear )( localT );
+        return lerp( getter( before ), getter( after ), eased );
+    }
+
+    function interpolateColor( key )
+    {
+        const { before, after } = findPair( ( kf ) => kf[ key ] !== undefined );
+        if ( before === null && after === null ) return undefined;
+        if ( before === null ) return parseColor( after[ key ] );
+        if ( after === null || before === after ) return parseColor( before[ key ] );
+        const span = after.frame - before.frame;
+        const localT = span === 0 ? 1 : ( frame - before.frame ) / span;
+        const eased = ( EASINGS[ before.easing ] || EASINGS.linear )( localT );
+        return lerpColor( parseColor( before[ key ] ), parseColor( after[ key ] ), eased );
+    }
+
+    const out = { ...layer };
+    delete out.keyframes;
+
+    for ( const key of NUMERIC_KEYS )
+    {
+        const v = interpolateNumber( ( kf ) => kf[ key ] );
+        if ( v !== undefined ) out[ key ] = v;
+    }
+    // transforms: shallow-merge static + interpolated
+    const mergedTransform = { ...( layer.transform || {} ) };
+    let anyTransform = false;
+    for ( const tkey of TRANSFORM_KEYS )
+    {
+        const v = interpolateNumber( ( kf ) => kf.transform && kf.transform[ tkey ] );
+        if ( v !== undefined )
+        {
+            mergedTransform[ tkey ] = v;
+            anyTransform = true;
+        }
+    }
+    if ( anyTransform || layer.transform )
+    {
+        out.transform = mergedTransform;
+    }
+    for ( const ckey of COLOR_KEYS )
+    {
+        const v = interpolateColor( ckey );
+        if ( v !== undefined ) out[ ckey ] = v;
+    }
+    return out;
+}
+
+/**
+ * Produce a static scene snapshot for a single frame (no animation/keyframes).
+ */
+function resolveSceneAtFrame( scene, frame )
+{
+    const snapshot = { ...scene };
+    delete snapshot.animation;
+    snapshot.layers = scene.layers.map( ( layer ) => resolveLayerAtFrame( layer, frame ) );
+    return snapshot;
+}
+
+/**
+ * Render every frame in the animation and write a frame sequence plus a
+ * horizontal filmstrip PNG. Non-animated scenes return a single frame.
+ */
+async function renderAnimation( scene, outputDir )
+{
+    const errors = validateScene( scene );
+    if ( errors.length > 0 )
+    {
+        throw new Error( `Invalid scene:\n  - ${errors.join( '\n  - ' )}` );
+    }
+    const name = scene.name || 'scene';
+    const totalFrames = scene.animation && scene.animation.frames ? scene.animation.frames : 1;
+    const frameDir = path.join( outputDir, `${name}_frames` );
+    if ( !fs.existsSync( frameDir ) )
+    {
+        fs.mkdirSync( frameDir, { recursive: true } );
+    }
+
+    const pad = String( totalFrames - 1 ).length;
+    const frameFiles = [];
+    const framePixels = [];
+
+    for ( let f = 0; f < totalFrames; f++ )
+    {
+        const snapshot = resolveSceneAtFrame( scene, f );
+        const px = compositeScene( snapshot );
+        framePixels.push( px );
+        const image = await pixelsToJimp( px, scene.width, scene.height );
+        const frameName = `frame_${String( f ).padStart( pad, '0' )}.png`;
+        const fp = path.join( frameDir, frameName );
+        await new Promise( ( resolve, reject ) =>
+            image.write( fp, ( err ) => err ? reject( err ) : resolve() ) );
+        frameFiles.push( fp );
+    }
+
+    // Build a horizontal filmstrip of all frames.
+    const stripWidth = scene.width * totalFrames;
+    const stripImage = await jimp.create( stripWidth, scene.height, 0x00000000 );
+    for ( let f = 0; f < totalFrames; f++ )
+    {
+        const px = framePixels[ f ];
+        const xOffset = f * scene.width;
+        for ( let y = 0; y < scene.height; y++ )
+        {
+            for ( let x = 0; x < scene.width; x++ )
+            {
+                const idx = ( y * scene.width + x ) * 4;
+                const color = jimp.rgbaToInt( px[ idx ], px[ idx + 1 ], px[ idx + 2 ], px[ idx + 3 ] );
+                stripImage.setPixelColor( color, xOffset + x, y );
+            }
+        }
+    }
+    const stripFile = path.join( outputDir, `${name}_filmstrip_${totalFrames}x.png` );
+    await new Promise( ( resolve, reject ) =>
+        stripImage.write( stripFile, ( err ) => err ? reject( err ) : resolve() ) );
+
+    return { frameDir, frameFiles, filmstrip: stripFile, frameCount: totalFrames };
+}
+
 module.exports = {
     NAMED_COLORS,
     BLEND_MODES,
+    EASINGS,
     blendChannel,
     parseColor,
     compositePixel,
@@ -376,5 +605,8 @@ module.exports = {
     renderLayer,
     compositeScene,
     pixelsToJimp,
-    renderSceneToFile
+    renderSceneToFile,
+    resolveLayerAtFrame,
+    resolveSceneAtFrame,
+    renderAnimation
 };

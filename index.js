@@ -2,7 +2,7 @@ const program = require('commander');
 const { SHAPES } = require('./shapeGenerator');
 const { MASKS, MASK_COLORS } = require('./maskGenerator');
 const { validateOptions, generateImage } = require('./imageGenerator');
-const { loadScene, renderSceneToFile } = require('./sceneCompositor');
+const { loadScene, renderSceneToFile, renderAnimation } = require('./sceneCompositor');
 
 async function main()
 {
@@ -12,8 +12,18 @@ async function main()
         {
             console.log( `🎬 Loading scene: ${program.scene}` );
             const scene = loadScene( program.scene );
-            const outputFile = await renderSceneToFile( scene, 'output' );
-            console.log( `✅ Generated: ${outputFile}` );
+            if ( scene.animation && scene.animation.frames )
+            {
+                console.log( `🎞️  Rendering ${scene.animation.frames}-frame animation...` );
+                const result = await renderAnimation( scene, 'output' );
+                console.log( `✅ Wrote ${result.frameCount} frames to: ${result.frameDir}` );
+                console.log( `✅ Filmstrip: ${result.filmstrip}` );
+            }
+            else
+            {
+                const outputFile = await renderSceneToFile( scene, 'output' );
+                console.log( `✅ Generated: ${outputFile}` );
+            }
         }
         catch ( err )
         {
