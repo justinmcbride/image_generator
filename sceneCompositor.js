@@ -19,6 +19,27 @@ const NAMED_COLORS = {
     purple:      { r: 128, g: 0, b: 128, a: 255 }
 };
 
+const BLEND_MODES = [ 'normal', 'multiply', 'screen', 'add', 'darken', 'lighten' ];
+
+function clamp255( v )
+{
+    return v < 0 ? 0 : v > 255 ? 255 : v;
+}
+
+function blendChannel( base, top, mode )
+{
+    switch ( mode )
+    {
+        case 'multiply': return Math.round( base * top / 255 );
+        case 'screen':   return Math.round( 255 - ( ( 255 - base ) * ( 255 - top ) ) / 255 );
+        case 'add':      return clamp255( base + top );
+        case 'darken':   return Math.min( base, top );
+        case 'lighten':  return Math.max( base, top );
+        case 'normal':
+        default:         return top;
+    }
+}
+
 /**
  * Parse a color string into an {r,g,b,a} object (0-255 each).
  * Accepts named colors or hex: #RGB, #RGBA, #RRGGBB, #RRGGBBAA.
@@ -98,6 +119,39 @@ function validateLayer( layer, index )
     {
         errors.push( `Layer ${index}: opacity must be a number between 0 and 1.` );
     }
+    if ( layer.blendMode !== undefined && !BLEND_MODES.includes( layer.blendMode ) )
+    {
+        errors.push( `Layer ${index}: blendMode "${layer.blendMode}" is not one of ${BLEND_MODES.join( ', ' )}.` );
+    }
+    if ( layer.transform !== undefined )
+    {
+        if ( typeof layer.transform !== 'object' || layer.transform === null )
+        {
+            errors.push( `Layer ${index}: transform must be an object.` );
+        }
+        else
+        {
+            for ( const key of [ 'rotate', 'scale', 'scaleX', 'scaleY', 'offsetX', 'offsetY' ] )
+            {
+                if ( layer.transform[ key ] !== undefined && typeof layer.transform[ key ] !== 'number' )
+                {
+                    errors.push( `Layer ${index}: transform.${key} must be a number.` );
+                }
+            }
+            if ( layer.transform.scaleX !== undefined && layer.transform.scaleX === 0 )
+            {
+                errors.push( `Layer ${index}: transform.scaleX cannot be zero.` );
+            }
+            if ( layer.transform.scaleY !== undefined && layer.transform.scaleY === 0 )
+            {
+                errors.push( `Layer ${index}: transform.scaleY cannot be zero.` );
+            }
+            if ( layer.transform.scale !== undefined && layer.transform.scale === 0 )
+            {
+                errors.push( `Layer ${index}: transform.scale cannot be zero.` );
+            }
+        }
+    }
     for ( const colorKey of [ 'foreground', 'background' ] )
     {
         if ( layer[ colorKey ] !== undefined )
@@ -150,8 +204,43 @@ function loadScene( filePath )
 }
 
 /**
+ * Resolve a layer's transform into normalized parameters and a precomputed
+ * inverse-transform sampler. Returned sampler maps an output (x,y) to the
+ * source-coord (sx,sy) to look up in the un-transformed shape grid.
+ */
+function buildSampler( transform, width, height )
+{
+    const t = transform || {};
+    const rotateDeg = t.rotate || 0;
+    const scaleX = t.scaleX !== undefined ? t.scaleX : ( t.scale !== undefined ? t.scale : 1 );
+    const scaleY = t.scaleY !== undefined ? t.scaleY : ( t.scale !== undefined ? t.scale : 1 );
+    const offsetX = t.offsetX || 0;
+    const offsetY = t.offsetY || 0;
+    const rotateRad = -rotateDeg * Math.PI / 180; // inverse rotation
+    const cosA = Math.cos( rotateRad );
+    const sinA = Math.sin( rotateRad );
+    const cx = width / 2;
+    const cy = height / 2;
+    const identity = rotateDeg === 0 && scaleX === 1 && scaleY === 1 && offsetX === 0 && offsetY === 0;
+
+    return function sample( x, y )
+    {
+        if ( identity ) return { x, y };
+        const px = x - cx - offsetX;
+        const py = y - cy - offsetY;
+        const rx = px * cosA - py * sinA;
+        const ry = px * sinA + py * cosA;
+        return {
+            x: rx / scaleX + cx,
+            y: ry / scaleY + cy
+        };
+    };
+}
+
+/**
  * Render a single layer to an {r,g,b,a} grid of `width` x `height`.
- * Returns a flat Uint8ClampedArray-like Array of length width*height*4.
+ * Applies transform (rotate/scale/offset) via inverse sampling.
+ * Returns a flat Array of length width*height*4.
  */
 function renderLayer( layer, width, height )
 {
@@ -165,12 +254,21 @@ function renderLayer( layer, width, height )
         emojiGrid = renderEmojiGrid( layer.emoji, width, height );
     }
 
+    const sample = buildSampler( layer.transform, width, height );
+
     const pixels = new Array( width * height * 4 );
     for ( let y = 0; y < height; y++ )
     {
         for ( let x = 0; x < width; x++ )
         {
-            const isFg = isForegroundPixel( x, y, width, height, layer.shape, emojiGrid );
+            const src = sample( x, y );
+            const sx = Math.round( src.x );
+            const sy = Math.round( src.y );
+            let isFg = false;
+            if ( sx >= 0 && sx < width && sy >= 0 && sy < height )
+            {
+                isFg = isForegroundPixel( sx, sy, width, height, layer.shape, emojiGrid );
+            }
             const c = isFg ? fg : bg;
             const idx = ( y * width + x ) * 4;
             pixels[ idx ]     = c.r;
@@ -209,12 +307,23 @@ function compositeScene( scene )
     {
         if ( layer.visible === false ) continue;
         const layerPixels = renderLayer( layer, width, height );
+        const blendMode = layer.blendMode || 'normal';
         for ( let i = 0; i < width * height; i++ )
         {
             const idx = i * 4;
             const base = { r: pixels[ idx ], g: pixels[ idx + 1 ], b: pixels[ idx + 2 ], a: pixels[ idx + 3 ] };
             const top  = { r: layerPixels[ idx ], g: layerPixels[ idx + 1 ], b: layerPixels[ idx + 2 ], a: layerPixels[ idx + 3 ] };
-            const out  = compositePixel( base, top );
+            let effectiveTop = top;
+            if ( blendMode !== 'normal' && top.a > 0 && base.a > 0 )
+            {
+                effectiveTop = {
+                    r: blendChannel( base.r, top.r, blendMode ),
+                    g: blendChannel( base.g, top.g, blendMode ),
+                    b: blendChannel( base.b, top.b, blendMode ),
+                    a: top.a
+                };
+            }
+            const out  = compositePixel( base, effectiveTop );
             pixels[ idx ]     = out.r;
             pixels[ idx + 1 ] = out.g;
             pixels[ idx + 2 ] = out.b;
@@ -256,8 +365,11 @@ async function renderSceneToFile( scene, outputDir )
 
 module.exports = {
     NAMED_COLORS,
+    BLEND_MODES,
+    blendChannel,
     parseColor,
     compositePixel,
+    buildSampler,
     validateLayer,
     validateScene,
     loadScene,
