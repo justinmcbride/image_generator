@@ -1,0 +1,41 @@
+{
+    "width": 128,
+    "height": 128,
+    "background": "#101820",
+    "output": "demo_scene.png",
+    "layers": [
+        {
+            "shape": "gradient",
+            "fgColor": "#ff3366",
+            "bgColor": "#222244",
+            "patternOptions": { "angle": 45 },
+            "blend": "normal",
+            "opacity": 1.0
+        },
+        {
+            "shape": "grid",
+            "fgColor": "#ffffff",
+            "bgColor": "transparent",
+            "patternOptions": { "spacing": 16, "thickness": 1 },
+            "blend": "screen",
+            "opacity": 0.5
+        },
+        {
+            "shape": "noise",
+            "fgColor": "#ffffff",
+            "bgColor": "transparent",
+            "patternOptions": { "seed": 7, "threshold": 0.92 },
+            "blend": "additive",
+            "opacity": 0.6
+        },
+        {
+            "shape": "circle",
+            "fgColor": "#ffcc00",
+            "bgColor": "transparent",
+            "mask": "circle",
+            "blend": "normal",
+            "opacity": 0.9,
+            "transform": { "scale": 0.7, "offset": [ -20, -20 ] }
+        }
+    ]
+}

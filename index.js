@@ -2,9 +2,26 @@ const program = require('commander');
 const { SHAPES } = require('./shapeGenerator');
 const { MASKS, MASK_COLORS } = require('./maskGenerator');
 const { validateOptions, generateImage } = require('./imageGenerator');
+const { generateSceneImage } = require('./sceneRenderer');
 
 async function main()
 {
+    if ( program.scene )
+    {
+        try
+        {
+            console.log( `🎬 Rendering scene: ${program.scene}` );
+            const outputFile = await generateSceneImage( program.scene );
+            console.log( `✅ Generated: ${outputFile}` );
+        }
+        catch ( err )
+        {
+            console.error( `❌ ${err.message || err}` );
+            process.exitCode = 1;
+        }
+        return;
+    }
+
     const options = {
         width: program.width,
         height: program.height,
@@ -13,8 +30,7 @@ async function main()
         maskColor: program.maskColor,
         emoji: program.emoji,
         fgColor: program.fgColor,
-        bgColor: program.bgColor,
-        scene: program.scene
+        bgColor: program.bgColor
     };
 
     const errors = validateOptions( options );
