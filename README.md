@@ -58,3 +58,17 @@ Available mask colors (area outside the mask):
 Example output file:
 
 `output/checkers_1px_256x256_circle_black.png`
+
+## Emoji
+
+An emoji character can be used as the shape pattern or as a mask using `--emoji`. This is required when `--shape emoji` or `--mask emoji` is selected.
+
+```bash
+node index.js -w 256 -h 256 -s emoji -e 🐙
+```
+
+You can also combine an emoji mask with any shape:
+
+```bash
+node index.js -w 256 -h 256 -s checkers --mask emoji -e ⭐
+```
