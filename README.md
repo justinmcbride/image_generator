@@ -6,6 +6,10 @@ It uses:
 - [`commander`](https://www.npmjs.com/package/commander) to read CLI options
 - [`jimp`](https://www.npmjs.com/package/jimp) to create and write image files
 
+Further reading:
+- [`STORY.md`](STORY.md) — how this project came to be, in narrative form
+- [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — the design behind the code
+
 ## What it does
 
 `index.js` creates an image pattern and writes the result to:
